@@ -306,6 +306,13 @@ class GameScene extends Phaser.Scene {
     // --- Touch-Steuerung ---
     this.createTouchControls(W, H);
 
+    // Resize-Handler: HUD bei Orientation-Change neu positionieren
+    this.scale.on('resize', (gameSize) => {
+      if (this.checkpointText) {
+        this.checkpointText.setPosition(gameSize.width - 20, 20);
+      }
+    }, this);
+
     // --- Tastatur-Steuerung (Desktop) ---
     this.cursors = this.input.keyboard.createCursorKeys();
     this.wasd = this.input.keyboard.addKeys({
