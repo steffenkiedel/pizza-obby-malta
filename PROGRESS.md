@@ -93,10 +93,13 @@
 
 ---
 
-## Phase 5: Veröffentlichung 🔲 Noch nicht gestartet
+## Phase 5: Veröffentlichung ✅ Abgeschlossen (27.02.2026)
+
+**URL:** https://steffenkiedel.github.io/pizza-obby-malta/
 
 **Aufgaben:**
-- [ ] GitHub Pages aktiviert
+- [x] GitHub Repository erstellt: https://github.com/steffenkiedel/pizza-obby-malta
+- [x] GitHub Pages aktiviert (Branch: main, Root: /)
 - [ ] Link getestet (iOS Safari, Chrome)
 - [ ] Link an Freunde/Familie verschickt
 
