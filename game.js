@@ -304,7 +304,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(1, 0).setScrollFactor(0).setDepth(10);
 
     // --- Touch-Steuerung ---
-    this.createTouchControls(W, H);
+    this.createTouchControls();
 
     // Resize-Handler: HUD bei Orientation-Change neu positionieren
     this.scale.on('resize', (gameSize) => {
@@ -692,43 +692,56 @@ class GameScene extends Phaser.Scene {
     }
   }
 
-  createTouchControls(W, H) {
-    const SIZE = 85;
-    const MARGIN = 20;
-    const BTN_Y = H - MARGIN - SIZE / 2;
+  createTouchControls() {
+    // Multi-Touch-Zonen: links laufen | rechts laufen | 2. Finger = Springen
+    this.controls = { left: false, right: false, jump: false };
 
-    // Links
-    const bLeft = this.add.rectangle(MARGIN + SIZE/2, BTN_Y, SIZE, SIZE, 0x000000, 0.45)
-      .setScrollFactor(0).setDepth(10).setInteractive();
-    this.add.text(MARGIN + SIZE/2, BTN_Y, '◀', { fontSize: '38px' })
-      .setOrigin(0.5).setScrollFactor(0).setDepth(11);
+    // Phaser braucht explizites Aktivieren von Multi-Touch (bis zu 3 gleichzeitige Finger)
+    this.input.addPointer(2);
 
-    // Rechts
-    const bRight = this.add.rectangle(MARGIN*2 + SIZE*1.5, BTN_Y, SIZE, SIZE, 0x000000, 0.45)
-      .setScrollFactor(0).setDepth(10).setInteractive();
-    this.add.text(MARGIN*2 + SIZE*1.5, BTN_Y, '▶', { fontSize: '38px' })
-      .setOrigin(0.5).setScrollFactor(0).setDepth(11);
-
-    // Springen
-    const bJump = this.add.rectangle(W - MARGIN - SIZE/2, BTN_Y, SIZE, SIZE, 0xFF9800, 0.7)
-      .setScrollFactor(0).setDepth(10).setInteractive();
-    this.add.text(W - MARGIN - SIZE/2, BTN_Y, 'JUMP', { fontSize: '20px', fill: '#fff', fontStyle: 'bold' })
-      .setOrigin(0.5).setScrollFactor(0).setDepth(11);
-
-    this.controls = { left: false, right: false };
-
-    bLeft.on('pointerdown', () => this.controls.left = true);
-    bLeft.on('pointerup',   () => this.controls.left = false);
-    bLeft.on('pointerout',  () => this.controls.left = false);
-
-    bRight.on('pointerdown', () => this.controls.right = true);
-    bRight.on('pointerup',   () => this.controls.right = false);
-    bRight.on('pointerout',  () => this.controls.right = false);
-
-    bJump.on('pointerdown', () => {
-      if (this.player.body.blocked.down) {
-        this.player.body.setVelocityY(-620);
+    // Hilfsfunktion: Scannt alle aktiven Pointer und setzt left/right
+    const syncDirections = () => {
+      const W = this.scale.width;
+      let left = false, right = false;
+      for (const p of this.input.manager.pointers) {
+        if (p.isDown) {
+          if (p.x < W / 2) left = true;
+          else right = true;
+        }
       }
+      this.controls.left = left;
+      this.controls.right = right;
+    };
+
+    this.input.on('pointerdown', () => {
+      // Aktive Pointer VOR diesem: wenn schon einer gedrückt → Sprung
+      let activeCount = 0;
+      for (const p of this.input.manager.pointers) {
+        if (p.isDown) activeCount++;
+      }
+      if (activeCount >= 2) {
+        this.controls.jump = true;  // wird in update() konsumiert
+      }
+      syncDirections();
+    });
+
+    this.input.on('pointerup', syncDirections);
+    this.input.on('pointermove', syncDirections);
+
+    // Tutorial-Overlay: erscheint 3 Sekunden beim ersten Spielstart
+    const W = this.scale.width;
+    const H = this.scale.height;
+    const hint = this.add.text(
+      W / 2, H * 0.82,
+      '← halten = laufen   •   2. Finger = springen   •   halten = laufen →',
+      { fontSize: '16px', fill: '#fff', stroke: '#000', strokeThickness: 3 }
+    ).setOrigin(0.5).setScrollFactor(0).setDepth(20).setAlpha(0.85);
+
+    this.time.delayedCall(3000, () => {
+      this.tweens.add({
+        targets: hint, alpha: 0, duration: 800,
+        onComplete: () => hint.destroy()
+      });
     });
   }
 
