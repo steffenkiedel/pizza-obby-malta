@@ -291,8 +291,10 @@ class GameScene extends Phaser.Scene {
     this.createSharks(H);
     this.createBirds(H);
 
-    // Kamera folgt Spieler
-    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+    // Kamera: Zoom + Spieler links positionieren (mehr Spielfeld voraus sichtbar)
+    this.cameras.main.setZoom(0.6);
+    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+    this.cameras.main.setFollowOffset((this.scale.width / 0.6) * 0.28, 0);
 
     // --- HUD ---
     this.pizzaText = this.add.text(20, 20, '🍕 0/25', {
@@ -306,11 +308,12 @@ class GameScene extends Phaser.Scene {
     // --- Touch-Steuerung ---
     this.createTouchControls();
 
-    // Resize-Handler: HUD bei Orientation-Change neu positionieren
+    // Resize-Handler: HUD + Kamera-Offset bei Orientation-Change aktualisieren
     this.scale.on('resize', (gameSize) => {
       if (this.checkpointText) {
         this.checkpointText.setPosition(gameSize.width - 20, 20);
       }
+      this.cameras.main.setFollowOffset((gameSize.width / 0.6) * 0.28, 0);
     }, this);
 
     // --- Tastatur-Steuerung (Desktop) ---
