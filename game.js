@@ -1213,15 +1213,17 @@ class WinScene extends Phaser.Scene {
 // ============================================================
 
 const config = {
-  type: Phaser.CANVAS,  // Canvas statt WebGL — vermeidet JPEG/Textur-Probleme im Browser
-  width: window.innerWidth,
-  height: window.innerHeight,
+  type: Phaser.CANVAS,
   backgroundColor: '#1E88E5',
+  scale: {
+    mode: Phaser.Scale.RESIZE,
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
   physics: {
     default: 'arcade',
     arcade: {
       gravity: { y: 800 },
-      debug: false        // auf true setzen um Kollisionsboxen zu sehen
+      debug: false
     }
   },
   scene: [BootScene, MenuScene, GameScene, GameOverScene, WinScene]
