@@ -714,14 +714,7 @@ class GameScene extends Phaser.Scene {
     };
 
     this.input.on('pointerdown', () => {
-      // Aktive Pointer VOR diesem: wenn schon einer gedrückt → Sprung
-      let activeCount = 0;
-      for (const p of this.input.manager.pointers) {
-        if (p.isDown) activeCount++;
-      }
-      if (activeCount >= 2) {
-        this.controls.jump = true;  // wird in update() konsumiert
-      }
+      this.controls.jump = true;  // jeder Tipp = Sprungversuch (onGround-Guard in update() schützt)
       syncDirections();
     });
 
@@ -733,7 +726,7 @@ class GameScene extends Phaser.Scene {
     const H = this.scale.height;
     const hint = this.add.text(
       W / 2, H * 0.82,
-      '← halten = laufen   •   2. Finger = springen   •   halten = laufen →',
+      '← halten = laufen   •   tippen = springen   •   halten = laufen →',
       { fontSize: '16px', fill: '#fff', stroke: '#000', strokeThickness: 3 }
     ).setOrigin(0.5).setScrollFactor(0).setDepth(20).setAlpha(0.85);
 
