@@ -706,10 +706,10 @@ class GameScene extends Phaser.Scene {
     this.controls = { left: false, right: false, jump: false, jumpVelocity: -620 };
     this.input.addPointer(2);
 
-    const SWIPE_MIN = 8;    // px nach oben für kleinsten Hop (sehr sensitiv)
-    const SWIPE_MAX = 35;   // px nach oben für vollen Sprung (~9% Bildschirmhöhe)
-    const VEL_MIN   = -430; // Velocity kleiner Hop
-    const VEL_MAX   = -680; // Velocity voller Sprung
+    const SWIPE_MIN = 8;    // px nach oben für kleinsten Hop
+    const SWIPE_MAX = 35;   // px nach oben für vollen Sprung
+    const VEL_MIN   = -500; // Velocity kleiner Hop
+    const VEL_MAX   = -820; // Velocity voller Sprung (hoch!)
 
     this.input.on('pointerdown', (pointer) => {
       pointer._side   = pointer.x < this.scale.width / 2 ? 'left' : 'right';
@@ -719,14 +719,28 @@ class GameScene extends Phaser.Scene {
     });
 
     this.input.on('pointermove', (pointer) => {
-      if (!pointer.isDown || !pointer._side || pointer._jumped) return;
-      const swipeUp = pointer._startY - pointer.y;  // positiv = Finger bewegt sich nach oben
-      if (swipeUp >= SWIPE_MIN) {
-        // Sprunghöhe proportional zur Wischweite (0..1 → VEL_MIN..VEL_MAX)
-        const t = Math.min((swipeUp - SWIPE_MIN) / (SWIPE_MAX - SWIPE_MIN), 1);
-        this.controls.jumpVelocity = VEL_MIN + t * (VEL_MAX - VEL_MIN);
-        this.controls.jump  = true;
-        pointer._jumped     = true;  // nur einmal pro Wisch auslösen
+      if (!pointer.isDown || !pointer._side) return;
+
+      // Richtungswechsel: Finger wechselt Bildschirmhälfte → neue Richtung
+      const newSide = pointer.x < this.scale.width / 2 ? 'left' : 'right';
+      if (newSide !== pointer._side) {
+        this.controls[pointer._side] = false;
+        pointer._side   = newSide;
+        pointer._startY = pointer.y;  // Y-Referenz neu setzen — kein falscher Sprung
+        pointer._jumped = false;
+        this.controls[newSide] = true;
+        return;  // diesen Frame keine Sprung-Auswertung
+      }
+
+      // Sprung: nach oben wischen
+      if (!pointer._jumped) {
+        const swipeUp = pointer._startY - pointer.y;
+        if (swipeUp >= SWIPE_MIN) {
+          const t = Math.min((swipeUp - SWIPE_MIN) / (SWIPE_MAX - SWIPE_MIN), 1);
+          this.controls.jumpVelocity = VEL_MIN + t * (VEL_MAX - VEL_MIN);
+          this.controls.jump  = true;
+          pointer._jumped     = true;
+        }
       }
     });
 
