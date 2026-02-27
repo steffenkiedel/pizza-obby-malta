@@ -702,53 +702,46 @@ class GameScene extends Phaser.Scene {
   }
 
   createTouchControls() {
-    // Steuerung: kurzer Tap (< 150ms) = Sprung | langes Halten = Laufen
-    this.controls = { left: false, right: false, jump: false };
+    // Steuerung: Halten = Laufen | nach oben wischen = Springen (variabel)
+    this.controls = { left: false, right: false, jump: false, jumpVelocity: -620 };
     this.input.addPointer(2);
 
-    const HOLD_MS = 150;
-
-    // Scannt alle aktiven Halte-Pointer und aktualisiert Laufrichtung
-    const syncRunning = () => {
-      let left = false, right = false;
-      for (const p of this.input.manager.pointers) {
-        if (p.isDown && p._isHold) {
-          if (p._side === 'left') left = true;
-          else right = true;
-        }
-      }
-      this.controls.left = left;
-      this.controls.right = right;
-    };
+    const SWIPE_MIN = 40;   // px nach oben für kleinsten Hop
+    const SWIPE_MAX = 130;  // px nach oben für vollen Sprung
+    const VEL_MIN   = -360; // Velocity kleiner Hop
+    const VEL_MAX   = -620; // Velocity voller Sprung
 
     this.input.on('pointerdown', (pointer) => {
-      pointer._side    = pointer.x < this.scale.width / 2 ? 'left' : 'right';
-      pointer._isHold  = false;
-      // Nach HOLD_MS: als Halten werten → Laufen starten
-      pointer._holdTimer = this.time.delayedCall(HOLD_MS, () => {
-        pointer._isHold = true;
-        syncRunning();
-      });
+      pointer._side   = pointer.x < this.scale.width / 2 ? 'left' : 'right';
+      pointer._startY = pointer.y;
+      pointer._jumped = false;
+      this.controls[pointer._side] = true;  // sofort laufen
+    });
+
+    this.input.on('pointermove', (pointer) => {
+      if (!pointer.isDown || !pointer._side || pointer._jumped) return;
+      const swipeUp = pointer._startY - pointer.y;  // positiv = Finger bewegt sich nach oben
+      if (swipeUp >= SWIPE_MIN) {
+        // Sprunghöhe proportional zur Wischweite (0..1 → VEL_MIN..VEL_MAX)
+        const t = Math.min((swipeUp - SWIPE_MIN) / (SWIPE_MAX - SWIPE_MIN), 1);
+        this.controls.jumpVelocity = VEL_MIN + t * (VEL_MAX - VEL_MIN);
+        this.controls.jump  = true;
+        pointer._jumped     = true;  // nur einmal pro Wisch auslösen
+      }
     });
 
     this.input.on('pointerup', (pointer) => {
-      if (pointer._holdTimer) { pointer._holdTimer.remove(); pointer._holdTimer = null; }
-      if (!pointer._isHold) {
-        this.controls.jump = true;  // kurzer Tap = Sprung (onGround-Guard in update())
-      }
-      pointer._isHold = false;
+      if (pointer._side) this.controls[pointer._side] = false;
       pointer._side   = null;
-      syncRunning();
+      pointer._jumped = false;
     });
-
-    this.input.on('pointermove', syncRunning);
 
     // Tutorial-Overlay: erscheint 3 Sekunden beim ersten Spielstart
     const W = this.scale.width;
     const H = this.scale.height;
     const hint = this.add.text(
       W / 2, H * 0.82,
-      '← halten = laufen   •   tippen = springen   •   halten = laufen →',
+      '← halten = laufen   •   nach oben wischen = springen   •   halten = laufen →',
       { fontSize: '16px', fill: '#fff', stroke: '#000', strokeThickness: 3 }
     ).setOrigin(0.5).setScrollFactor(0).setDepth(20).setAlpha(0.85);
 
@@ -1129,9 +1122,11 @@ class GameScene extends Phaser.Scene {
     const onGround = this.player.body.blocked.down;
 
     if (jump && onGround && !this.isDucking) {
-      this.player.body.setVelocityY(-620);
+      // Touch-Wisch: variable Höhe | Tastatur: immer voll
+      this.player.body.setVelocityY(this.controls.jumpVelocity);
     }
-    this.controls.jump = false;  // Einmal-Trigger zurücksetzen
+    this.controls.jump         = false;   // Einmal-Trigger zurücksetzen
+    this.controls.jumpVelocity = -620;    // Reset auf vollen Sprung (Tastatur-Default)
 
     // Schnellfall / Ducken — Bug-Fix: Schnellfall NICHT wenn isDucking=true,
     // da der geduckte Body kurz über der Plattform schwebt und onGround=false meldet
