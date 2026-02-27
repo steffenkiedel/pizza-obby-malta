@@ -116,7 +116,7 @@
 
 ## Offene Fragen / Probleme
 
-- GitHub-Repository und GitHub Pages noch nicht eingerichtet (Link auf Handy testen)
+- Handy-Test noch ausstehend (Link testen + an Freunde schicken)
 
 ---
 
@@ -147,5 +147,7 @@
 ---
 
 ## Letzte Änderung
+
+**27.02.2026** — Mobile-Steuerung: Alte Buttons durch unsichtbare Multi-Touch-Zonen ersetzt. Links halten = läuft links, rechts halten = läuft rechts, 2. Finger = Springen. Phaser Scale.RESIZE für Landscape-Support. Tutorial-Overlay 3s beim Start. GitHub Pages live: https://steffenkiedel.github.io/pizza-obby-malta/
 
 **26.02.2026 (3)** — Massive Level-Erweiterung: WORLD_WIDTH 35000px, 7 Checkpoints, 5 neue Hindernistypen (Aufzüge, Kanonenkugeln, Schwerter, Haie, Vögel), 25 Pizzas, Hintergrundmusik + Nom-Nom-Sound (Web Audio API). Duck-Bug behoben.
