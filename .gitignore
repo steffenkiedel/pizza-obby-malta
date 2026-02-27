@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Persönliche Referenzfotos (nicht für Deployment benötigt)
+assets/referenzbilder/
+
+# Alte Testbilder (nicht mehr im Spiel verwendet)
+assets/img/
+
+# Node (falls später gebraucht)
+node_modules/
