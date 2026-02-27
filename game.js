@@ -292,11 +292,11 @@ class GameScene extends Phaser.Scene {
     this.createBirds(H);
 
     // Kamera: Zoom + Spieler links+oben positionieren (mehr Spielfeld voraus, weniger Himmel)
-    this.cameras.main.setZoom(0.7);
+    this.cameras.main.setZoom(0.75);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setFollowOffset(
-      (this.scale.width  / 0.7) * 0.28,   // Spieler bei ~22% von links
-      (this.scale.height / 0.7) * 0.15    // Spieler bei ~35% von oben (weniger Himmel)
+      (this.scale.width  / 0.75) * 0.28,  // Spieler bei ~22% von links
+      (this.scale.height / 0.75) * 0.15   // Spieler bei ~35% von oben (weniger Himmel)
     );
 
     // --- HUD ---
@@ -317,8 +317,8 @@ class GameScene extends Phaser.Scene {
         this.checkpointText.setPosition(gameSize.width - 20, 20);
       }
       this.cameras.main.setFollowOffset(
-        (gameSize.width  / 0.7) * 0.28,
-        (gameSize.height / 0.7) * 0.15
+        (gameSize.width  / 0.75) * 0.28,
+        (gameSize.height / 0.75) * 0.15
       );
     }, this);
 
@@ -706,10 +706,10 @@ class GameScene extends Phaser.Scene {
     this.controls = { left: false, right: false, jump: false, jumpVelocity: -620 };
     this.input.addPointer(2);
 
-    const SWIPE_MIN = 40;   // px nach oben für kleinsten Hop
-    const SWIPE_MAX = 130;  // px nach oben für vollen Sprung
-    const VEL_MIN   = -360; // Velocity kleiner Hop
-    const VEL_MAX   = -620; // Velocity voller Sprung
+    const SWIPE_MIN = 8;    // px nach oben für kleinsten Hop (sehr sensitiv)
+    const SWIPE_MAX = 35;   // px nach oben für vollen Sprung (~9% Bildschirmhöhe)
+    const VEL_MIN   = -430; // Velocity kleiner Hop
+    const VEL_MAX   = -680; // Velocity voller Sprung
 
     this.input.on('pointerdown', (pointer) => {
       pointer._side   = pointer.x < this.scale.width / 2 ? 'left' : 'right';
