@@ -1097,7 +1097,7 @@ class GameScene extends Phaser.Scene {
 
     const goLeft  = this.controls.left  || this.cursors.left.isDown  || this.wasd.left.isDown;
     const goRight = this.controls.right || this.cursors.right.isDown || this.wasd.right.isDown;
-    const jump    = this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.up.isDown;
+    const jump    = this.controls.jump || this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.up.isDown;
     const downKey = this.cursors.down.isDown || this.wasd.down.isDown;
 
     if (goRight) this.facingRight = true;
@@ -1116,6 +1116,7 @@ class GameScene extends Phaser.Scene {
     if (jump && onGround && !this.isDucking) {
       this.player.body.setVelocityY(-620);
     }
+    this.controls.jump = false;  // Einmal-Trigger zurücksetzen
 
     // Schnellfall / Ducken — Bug-Fix: Schnellfall NICHT wenn isDucking=true,
     // da der geduckte Body kurz über der Plattform schwebt und onGround=false meldet
