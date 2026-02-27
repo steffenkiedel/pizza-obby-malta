@@ -291,10 +291,13 @@ class GameScene extends Phaser.Scene {
     this.createSharks(H);
     this.createBirds(H);
 
-    // Kamera: Zoom + Spieler links positionieren (mehr Spielfeld voraus sichtbar)
-    this.cameras.main.setZoom(0.6);
+    // Kamera: Zoom + Spieler links+oben positionieren (mehr Spielfeld voraus, weniger Himmel)
+    this.cameras.main.setZoom(0.7);
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-    this.cameras.main.setFollowOffset((this.scale.width / 0.6) * 0.28, 0);
+    this.cameras.main.setFollowOffset(
+      (this.scale.width  / 0.7) * 0.28,   // Spieler bei ~22% von links
+      (this.scale.height / 0.7) * 0.15    // Spieler bei ~35% von oben (weniger Himmel)
+    );
 
     // --- HUD ---
     this.pizzaText = this.add.text(20, 20, '🍕 0/25', {
@@ -313,7 +316,10 @@ class GameScene extends Phaser.Scene {
       if (this.checkpointText) {
         this.checkpointText.setPosition(gameSize.width - 20, 20);
       }
-      this.cameras.main.setFollowOffset((gameSize.width / 0.6) * 0.28, 0);
+      this.cameras.main.setFollowOffset(
+        (gameSize.width  / 0.7) * 0.28,
+        (gameSize.height / 0.7) * 0.15
+      );
     }, this);
 
     // --- Tastatur-Steuerung (Desktop) ---
@@ -696,19 +702,18 @@ class GameScene extends Phaser.Scene {
   }
 
   createTouchControls() {
-    // Multi-Touch-Zonen: links laufen | rechts laufen | 2. Finger = Springen
+    // Steuerung: kurzer Tap (< 150ms) = Sprung | langes Halten = Laufen
     this.controls = { left: false, right: false, jump: false };
-
-    // Phaser braucht explizites Aktivieren von Multi-Touch (bis zu 3 gleichzeitige Finger)
     this.input.addPointer(2);
 
-    // Hilfsfunktion: Scannt alle aktiven Pointer und setzt left/right
-    const syncDirections = () => {
-      const W = this.scale.width;
+    const HOLD_MS = 150;
+
+    // Scannt alle aktiven Halte-Pointer und aktualisiert Laufrichtung
+    const syncRunning = () => {
       let left = false, right = false;
       for (const p of this.input.manager.pointers) {
-        if (p.isDown) {
-          if (p.x < W / 2) left = true;
+        if (p.isDown && p._isHold) {
+          if (p._side === 'left') left = true;
           else right = true;
         }
       }
@@ -716,13 +721,27 @@ class GameScene extends Phaser.Scene {
       this.controls.right = right;
     };
 
-    this.input.on('pointerdown', () => {
-      this.controls.jump = true;  // jeder Tipp = Sprungversuch (onGround-Guard in update() schützt)
-      syncDirections();
+    this.input.on('pointerdown', (pointer) => {
+      pointer._side    = pointer.x < this.scale.width / 2 ? 'left' : 'right';
+      pointer._isHold  = false;
+      // Nach HOLD_MS: als Halten werten → Laufen starten
+      pointer._holdTimer = this.time.delayedCall(HOLD_MS, () => {
+        pointer._isHold = true;
+        syncRunning();
+      });
     });
 
-    this.input.on('pointerup', syncDirections);
-    this.input.on('pointermove', syncDirections);
+    this.input.on('pointerup', (pointer) => {
+      if (pointer._holdTimer) { pointer._holdTimer.remove(); pointer._holdTimer = null; }
+      if (!pointer._isHold) {
+        this.controls.jump = true;  // kurzer Tap = Sprung (onGround-Guard in update())
+      }
+      pointer._isHold = false;
+      pointer._side   = null;
+      syncRunning();
+    });
+
+    this.input.on('pointermove', syncRunning);
 
     // Tutorial-Overlay: erscheint 3 Sekunden beim ersten Spielstart
     const W = this.scale.width;
