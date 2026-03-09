@@ -719,10 +719,10 @@ class GameScene extends Phaser.Scene {
     const SWIPE_DIST  = 12;   // px Mindestbewegung bis Geste erkannt wird
     const JUMP_ANGLE  = 30;   // °: Winkel über Horizontal → Sprung (Swipe-Toleranz)
     const TAN_JUMP    = Math.tan(JUMP_ANGLE * Math.PI / 180); // ≈ 0.577
-    const JUMP_PX_MIN = 12;   // px Wischstrecke → kleiner Hop
-    const JUMP_PX_MAX = 55;   // px Wischstrecke → voller Sprung
-    const VEL_MIN     = -420; // Velocity kleiner Hop
-    const VEL_MAX     = -820; // Velocity voller Sprung
+    const JUMP_PX_MIN = 12;    // px Wischstrecke → kleiner Hop
+    const JUMP_PX_MAX = 55;    // px Wischstrecke → voller Sprung
+    const VEL_MIN     = -500;  // Velocity kleiner Hop
+    const VEL_MAX     = -1050; // Velocity voller Sprung (hoch!)
 
     this.input.on('pointerdown', (pointer) => {
       // Referenzpunkt für nächste Geste
@@ -1190,23 +1190,26 @@ class GameScene extends Phaser.Scene {
       if (jumpNow && navigator.vibrate) navigator.vibrate(15); // Haptic: Sprung
     }
     this.controls.jump         = false;
-    this.controls.jumpVelocity = -620;
+    this.controls.jumpVelocity = -820; // Tastatur-Default (voller Sprung)
 
     // Landungs-Vibration
     if (onGround && !this._wasOnGround && navigator.vibrate) navigator.vibrate(8);
     this._wasOnGround = onGround;
 
     // Schnellfall / Ducken
+    // Duck-Fix: setOffset(0,30) hält die untere Körperkante an gleicher Position,
+    // damit der Body nicht 15px nach oben schwimmt und onGround=false wird.
     if (downKey) {
       if (!onGround && !this.isDucking) {
-        this.player.body.setVelocityY(700);
+        this.player.body.setVelocityY(700); // Schnellfall in der Luft
       } else if (onGround && !this.isDucking) {
         this.isDucking = true;
         this.player.body.setSize(40, 30);
+        this.player.body.setOffset(0, 30); // untere Kante bleibt auf Bodenhöhe!
       }
     } else if (this.isDucking) {
       this.isDucking = false;
-      this.player.body.setSize(40, 60);
+      this.player.body.setSize(40, 60);  // reset inkl. offset (center=true setzt offset=0)
     }
 
     // Hintergrund immer mit Kamera-Viewport synchronisieren (scrollFactor-Alternative)
