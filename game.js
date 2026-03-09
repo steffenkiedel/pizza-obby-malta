@@ -709,68 +709,93 @@ class GameScene extends Phaser.Scene {
   }
 
   createTouchControls() {
-    // Steuerung: Halten = Laufen | nach oben wischen = Springen (variabel)
-    this.controls = { left: false, right: false, jump: false, jumpVelocity: -620 };
+    // Swipe-Runner: ein Finger steuert alles
+    this.controls = { left: false, right: false, jump: false, jumpVelocity: -620, duck: false };
+    this.jumpBuffer   = 0;  // Timestamp letzter Jump-Wunsch (für Input Buffer)
+    this.lastOnGround = 0;  // Timestamp letztes onGround (für Coyote Time)
     this.input.addPointer(2);
 
-    const SWIPE_MIN = 8;    // px nach oben für kleinsten Hop
-    const SWIPE_MAX = 35;   // px nach oben für vollen Sprung
-    const VEL_MIN   = -500; // Velocity kleiner Hop
-    const VEL_MAX   = -820; // Velocity voller Sprung (hoch!)
+    // Schwellwerte
+    const SWIPE_DIST  = 12;   // px Mindestbewegung bis Geste erkannt wird
+    const JUMP_ANGLE  = 30;   // °: Winkel über Horizontal → Sprung (Swipe-Toleranz)
+    const TAN_JUMP    = Math.tan(JUMP_ANGLE * Math.PI / 180); // ≈ 0.577
+    const JUMP_PX_MIN = 12;   // px Wischstrecke → kleiner Hop
+    const JUMP_PX_MAX = 55;   // px Wischstrecke → voller Sprung
+    const VEL_MIN     = -420; // Velocity kleiner Hop
+    const VEL_MAX     = -820; // Velocity voller Sprung
 
     this.input.on('pointerdown', (pointer) => {
-      pointer._side   = pointer.x < this.scale.width / 2 ? 'left' : 'right';
-      pointer._startY = pointer.y;
-      pointer._jumped = false;
-      this.controls[pointer._side] = true;  // sofort laufen
+      // Referenzpunkt für nächste Geste
+      pointer._sx     = pointer.x;
+      pointer._sy     = pointer.y;
+      pointer._dir    = null;    // aktuelle Laufrichtung dieses Fingers
+      pointer._jumped = false;   // hat dieser Finger schon gesprungen?
     });
 
     this.input.on('pointermove', (pointer) => {
-      if (!pointer.isDown || !pointer._side) return;
+      if (!pointer.isDown) return;
 
-      // Richtungswechsel: Finger wechselt Bildschirmhälfte → neue Richtung
-      const newSide = pointer.x < this.scale.width / 2 ? 'left' : 'right';
-      if (newSide !== pointer._side) {
-        this.controls[pointer._side] = false;
-        pointer._side   = newSide;
-        pointer._startY = pointer.y;  // Y-Referenz neu setzen — kein falscher Sprung
-        pointer._jumped = false;
-        this.controls[newSide] = true;
-        return;  // diesen Frame keine Sprung-Auswertung
+      const dx  = pointer.x - pointer._sx;
+      const dy  = pointer.y - pointer._sy;
+      const adx = Math.abs(dx);
+      const ady = Math.abs(dy);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < SWIPE_DIST) return; // Noch kein klarer Swipe
+
+      // ─── SPRUNG: nach oben, Winkel > 30° über Horizontal ─────────────
+      if (dy < 0 && ady > adx * TAN_JUMP && !pointer._jumped) {
+        const swipeUp = ady;
+        const t = Math.max(0, Math.min((swipeUp - JUMP_PX_MIN) / (JUMP_PX_MAX - JUMP_PX_MIN), 1));
+        this.controls.jumpVelocity = VEL_MIN + t * (VEL_MAX - VEL_MIN);
+        this.controls.jump = true;
+        this.jumpBuffer    = Date.now(); // Input Buffer starten
+        pointer._jumped    = true;
+        if (navigator.vibrate) navigator.vibrate(15);
+        pointer._sx = pointer.x; pointer._sy = pointer.y; // Referenz zurücksetzen
+        return;
       }
 
-      // Sprung: nach oben wischen
-      if (!pointer._jumped) {
-        const swipeUp = pointer._startY - pointer.y;
-        if (swipeUp >= SWIPE_MIN) {
-          const t = Math.min((swipeUp - SWIPE_MIN) / (SWIPE_MAX - SWIPE_MIN), 1);
-          this.controls.jumpVelocity = VEL_MIN + t * (VEL_MAX - VEL_MIN);
-          this.controls.jump  = true;
-          pointer._jumped     = true;
-        }
+      // ─── DUCKEN: nach unten, Winkel > 30° unter Horizontal ──────────
+      if (dy > 0 && ady > adx * TAN_JUMP && !pointer._jumped) {
+        this.controls.duck = true;
+        pointer._sx = pointer.x; pointer._sy = pointer.y;
+        return;
       }
+
+      // ─── LAUFEN: horizontaler Swipe (oder Richtungswechsel) ──────────
+      const newDir = dx > 0 ? 'right' : 'left';
+      if (newDir !== pointer._dir) {
+        // Alte Richtung stoppen
+        if (pointer._dir === 'right') this.controls.right = false;
+        if (pointer._dir === 'left')  this.controls.left  = false;
+        pointer._dir    = newDir;
+        pointer._jumped = false; // Nach Richtungswechsel darf wieder gesprungen werden
+      }
+      this.controls[newDir] = true;
+      this.controls.duck    = false; // Ducken beim Laufen abbrechen
+      // Referenz zurücksetzen → nächste Geste relativ zur aktuellen Position
+      pointer._sx = pointer.x; pointer._sy = pointer.y;
     });
 
     this.input.on('pointerup', (pointer) => {
-      if (pointer._side) this.controls[pointer._side] = false;
-      pointer._side   = null;
+      if (pointer._dir === 'right') this.controls.right = false;
+      if (pointer._dir === 'left')  this.controls.left  = false;
+      this.controls.duck = false;
+      pointer._dir    = null;
       pointer._jumped = false;
     });
 
-    // Tutorial-Overlay: erscheint 3 Sekunden beim ersten Spielstart
+    // Tutorial-Overlay
     const W = this.scale.width;
     const H = this.scale.height;
     const hint = this.add.text(
       W / 2, H * 0.82,
-      '← halten = laufen   •   nach oben wischen = springen   •   halten = laufen →',
+      '→ wischen = laufen  •  ↑ wischen = springen  •  Richtung halten',
       { fontSize: '16px', fill: '#fff', stroke: '#000', strokeThickness: 3 }
     ).setOrigin(0.5).setScrollFactor(0).setDepth(20).setAlpha(0.85);
-
     this.time.delayedCall(3000, () => {
-      this.tweens.add({
-        targets: hint, alpha: 0, duration: 800,
-        onComplete: () => hint.destroy()
-      });
+      this.tweens.add({ targets: hint, alpha: 0, duration: 800, onComplete: () => hint.destroy() });
     });
   }
 
@@ -1126,10 +1151,14 @@ class GameScene extends Phaser.Scene {
   update() {
     const SPEED = 300;
 
+    const COYOTE_MS   = 80;   // ms nach Plattformende darf noch gesprungen werden
+    const BUFFER_MS   = 120;  // ms: zu früher Sprung wird bei Landung ausgeführt
+    const now = Date.now();
+
     const goLeft  = this.controls.left  || this.cursors.left.isDown  || this.wasd.left.isDown;
     const goRight = this.controls.right || this.cursors.right.isDown || this.wasd.right.isDown;
-    const jump    = this.controls.jump || this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.up.isDown;
-    const downKey = this.cursors.down.isDown || this.wasd.down.isDown;
+    const jumpNow = this.controls.jump  || this.cursors.up.isDown || this.cursors.space.isDown || this.wasd.up.isDown;
+    const downKey = this.cursors.down.isDown || this.wasd.down.isDown || this.controls.duck;
 
     if (goRight) this.facingRight = true;
     if (goLeft)  this.facingRight = false;
@@ -1144,18 +1173,33 @@ class GameScene extends Phaser.Scene {
 
     const onGround = this.player.body.blocked.down;
 
-    if (jump && onGround && !this.isDucking) {
-      // Touch-Wisch: variable Höhe | Tastatur: immer voll
-      this.player.body.setVelocityY(this.controls.jumpVelocity);
-    }
-    this.controls.jump         = false;   // Einmal-Trigger zurücksetzen
-    this.controls.jumpVelocity = -620;    // Reset auf vollen Sprung (Tastatur-Default)
+    // Coyote Time: letzte Zeit am Boden merken
+    if (onGround) this.lastOnGround = now;
+    const coyoteOk = (now - this.lastOnGround) < COYOTE_MS;
 
-    // Schnellfall / Ducken — Bug-Fix: Schnellfall NICHT wenn isDucking=true,
-    // da der geduckte Body kurz über der Plattform schwebt und onGround=false meldet
+    // Input Buffer: Sprungwunsch der kurz vor Landung kam
+    if (jumpNow) this.jumpBuffer = now;
+    const bufferOk = (now - this.jumpBuffer) < BUFFER_MS;
+
+    // Springen: onGround ODER Coyote Time, Input ODER Buffer
+    const canJump = (onGround || coyoteOk) && !this.isDucking;
+    if (canJump && bufferOk) {
+      this.player.body.setVelocityY(this.controls.jumpVelocity);
+      this.jumpBuffer   = 0;   // Buffer verbraucht
+      this.lastOnGround = 0;   // Coyote Time zurücksetzen
+      if (jumpNow && navigator.vibrate) navigator.vibrate(15); // Haptic: Sprung
+    }
+    this.controls.jump         = false;
+    this.controls.jumpVelocity = -620;
+
+    // Landungs-Vibration
+    if (onGround && !this._wasOnGround && navigator.vibrate) navigator.vibrate(8);
+    this._wasOnGround = onGround;
+
+    // Schnellfall / Ducken
     if (downKey) {
       if (!onGround && !this.isDucking) {
-        this.player.body.setVelocityY(700); // Schnellfall (nur echte Luft)
+        this.player.body.setVelocityY(700);
       } else if (onGround && !this.isDucking) {
         this.isDucking = true;
         this.player.body.setSize(40, 30);
