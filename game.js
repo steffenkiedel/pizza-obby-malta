@@ -1322,6 +1322,7 @@ const config = {
   type: Phaser.CANVAS,
   backgroundColor: '#1E88E5',
   scale: {
+    parent: 'game',          // Canvas in den #game div (position:fixed; inset:0)
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.NO_CENTER
   },
