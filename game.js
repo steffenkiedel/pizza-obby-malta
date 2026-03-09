@@ -1322,8 +1322,11 @@ const config = {
   type: Phaser.CANVAS,
   backgroundColor: '#1E88E5',
   scale: {
-    mode: Phaser.Scale.RESIZE,
-    autoCenter: Phaser.Scale.NO_CENTER
+    // FIT: feste Auflösung, Phaser skaliert auf jeden Bildschirm — der Standard für HTML5-Spiele
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 1280,
+    height: 570,   // ~2.25:1 — passt zu modernen iPhones im Landscape-Modus
   },
   physics: {
     default: 'arcade',
@@ -1336,11 +1339,3 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
-
-// iOS Safari Fix: body.getBoundingClientRect() kann die falsche Höhe liefern.
-// Wir erzwingen die korrekte Canvas-Größe direkt über window.innerWidth/Height.
-function syncCanvasSize() {
-  game.scale.resize(window.innerWidth, window.innerHeight);
-}
-window.addEventListener('resize', syncCanvasSize, { passive: true });
-setTimeout(syncCanvasSize, 100); // nach initialem Render nochmals setzen
