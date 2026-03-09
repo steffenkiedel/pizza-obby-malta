@@ -119,7 +119,9 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH, H);
 
     // Hintergrund: Pixel-Art Malta-Skyline (einmalig gezeichnet, scrollFactor 0 = fixiert)
-    this.drawMaltaSkyline(W, H);
+    // W/ZOOM und H/ZOOM kompensiert den Camera-Zoom, damit der Hintergrund den ganzen Screen füllt
+    const ZOOM = 0.75;
+    this.skylineBg = this.drawMaltaSkyline(W / ZOOM, H / ZOOM);
 
     // --- Plattform-Gruppen ---
     this.platforms = this.physics.add.staticGroup();
@@ -292,11 +294,13 @@ class GameScene extends Phaser.Scene {
     this.createBirds(H);
 
     // Kamera: Zoom + Spieler links+oben positionieren (mehr Spielfeld voraus, weniger Himmel)
-    this.cameras.main.setZoom(0.75);
-    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+    this.cameras.main.setZoom(ZOOM);
+    // lerpX 0.25: Kamera zieht flott nach
+    // Negativer X-Offset: Kamerazentrum links vom Spieler → Spieler erscheint im linken Drittel
+    this.cameras.main.startFollow(this.player, true, 0.25, 0.12);
     this.cameras.main.setFollowOffset(
-      (this.scale.width  / 0.75) * 0.28,  // Spieler bei ~22% von links
-      (this.scale.height / 0.75) * 0.15   // Spieler bei ~35% von oben (weniger Himmel)
+      -(this.scale.width  / ZOOM) * 0.2,  // Spieler bei ~30% von links (mehr Welt voraus sichtbar)
+      (this.scale.height / ZOOM) * 0.15   // Spieler bei ~35% von oben (weniger Himmel)
     );
 
     // --- HUD ---
@@ -311,14 +315,17 @@ class GameScene extends Phaser.Scene {
     // --- Touch-Steuerung ---
     this.createTouchControls();
 
-    // Resize-Handler: HUD + Kamera-Offset bei Orientation-Change aktualisieren
+    // Resize-Handler: Hintergrund neuzeichnen + HUD + Kamera-Offset aktualisieren
     this.scale.on('resize', (gameSize) => {
+      if (this.skylineBg) { this.skylineBg.destroy(); }
+      this.skylineBg = this.drawMaltaSkyline(gameSize.width / ZOOM, gameSize.height / ZOOM);
+
       if (this.checkpointText) {
         this.checkpointText.setPosition(gameSize.width - 20, 20);
       }
       this.cameras.main.setFollowOffset(
-        (gameSize.width  / 0.75) * 0.28,
-        (gameSize.height / 0.75) * 0.15
+        -(gameSize.width  / ZOOM) * 0.2,
+        (gameSize.height / ZOOM) * 0.15
       );
     }, this);
 
@@ -900,7 +907,8 @@ class GameScene extends Phaser.Scene {
   // ── Pixel-Art Zeichenfunktionen ───────────────────────────
 
   drawMaltaSkyline(W, H) {
-    const g = this.add.graphics().setScrollFactor(0).setDepth(-1);
+    // Kein setScrollFactor(0) — Position wird in update() mit Kamera synchronisiert
+    const g = this.add.graphics().setDepth(-1);
 
     // Himmel (3 Farbband-Ebenen — Pixel-Art-Tiefenwirkung statt Foto-Gradient)
     g.fillStyle(0x1A5F9E, 1); g.fillRect(0, 0, W, H * 0.42);
@@ -1005,6 +1013,7 @@ class GameScene extends Phaser.Scene {
     for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
       W$(W * 0.80 + 8 + c * Math.floor(W * 0.20 / 3.3), H * 0.41 + 10 + r * 28, 13, 20);
     }
+    return g;
   }
 
   drawPlayer(x, y, ducking, facingRight) {
@@ -1156,6 +1165,11 @@ class GameScene extends Phaser.Scene {
       this.player.body.setSize(40, 60);
     }
 
+    // Hintergrund immer mit Kamera-Viewport synchronisieren (scrollFactor-Alternative)
+    if (this.skylineBg) {
+      this.skylineBg.setPosition(this.cameras.main.scrollX, this.cameras.main.scrollY);
+    }
+
     // Alle Pixel-Art Charaktere und Hindernisse zeichnen
     this.drawPlayer(this.player.x, this.player.y, this.isDucking, this.facingRight);
     this.knightData.forEach(({body, gfx}) => this.drawKnight(gfx, body.x, body.y, true));
@@ -1262,7 +1276,7 @@ const config = {
   backgroundColor: '#1E88E5',
   scale: {
     mode: Phaser.Scale.RESIZE,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    autoCenter: Phaser.Scale.NO_CENTER
   },
   physics: {
     default: 'arcade',
