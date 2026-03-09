@@ -7,8 +7,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; background: #1E88E5; overflow: hidden; }
-    #game { position: fixed; inset: 0; overflow: hidden; }
-    canvas { display: block; }
+    canvas { display: block; position: fixed; top: 0; left: 0; }
 
     /* Landscape-Pflicht: Overlay erscheint automatisch im Portrait-Modus */
     #rotate-overlay {
@@ -44,7 +43,6 @@
   </style>
 </head>
 <body>
-  <div id="game"></div>
   <div id="rotate-overlay">
     <div class="icon">📱</div>
     <h2>Handy drehen</h2>
