@@ -1336,3 +1336,11 @@ const config = {
 };
 
 const game = new Phaser.Game(config);
+
+// iOS Safari Fix: body.getBoundingClientRect() kann die falsche Höhe liefern.
+// Wir erzwingen die korrekte Canvas-Größe direkt über window.innerWidth/Height.
+function syncCanvasSize() {
+  game.scale.resize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', syncCanvasSize, { passive: true });
+setTimeout(syncCanvasSize, 100); // nach initialem Render nochmals setzen
